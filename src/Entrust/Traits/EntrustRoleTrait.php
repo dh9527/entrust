@@ -20,7 +20,7 @@ trait EntrustRoleTrait
         $rolePrimaryKey = $this->primaryKey;
         $cacheKey = 'entrust_permissions_for_role_'.$this->$rolePrimaryKey;
         if(Cache::getStore() instanceof TaggableStore) {
-            return Cache::tags(Config::get('entrust.permission_role_table'))->remember($cacheKey, Config::get('cache.ttl'), function () {
+            return Cache::tags(Config::get('entrust.permission_role_table'))->remember($cacheKey, Config::get('cache.ttl', 60), function () {
                 return $this->perms()->get();
             });
         }
@@ -99,7 +99,7 @@ trait EntrustRoleTrait
             return true;
         });
     }
-    
+
     /**
      * Checks if the role has a permission by its name.
      *
@@ -150,6 +150,10 @@ trait EntrustRoleTrait
         } else {
             $this->perms()->detach();
         }
+
+        if(Cache::getStore() instanceof TaggableStore) {
+             Cache::tags(Config::get('entrust.permission_role_table'))->flush();
+         }
     }
 
     /**
@@ -166,7 +170,7 @@ trait EntrustRoleTrait
         }
 
         if (is_array($permission)) {
-            $permission = $permission['id'];
+            return $this->attachPermissions($permission);
         }
 
         $this->perms()->attach($permission);
@@ -181,11 +185,13 @@ trait EntrustRoleTrait
      */
     public function detachPermission($permission)
     {
-        if (is_object($permission))
+        if (is_object($permission)) {
             $permission = $permission->getKey();
+        }
 
-        if (is_array($permission))
-            $permission = $permission['id'];
+        if (is_array($permission)) {
+            return $this->detachPermissions($permission);
+        }
 
         $this->perms()->detach($permission);
     }
